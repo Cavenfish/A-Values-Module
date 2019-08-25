@@ -7,8 +7,8 @@ function sticking(α, ρ, M, T)
 end
 
 #Snell's Law solved for θ
-function snell_θ2(n1, n2, θ1)
-    asin( (n1/n2)*sin(θ1) )
+function snell_θt(n1, n2, θi)
+    asin( (n1/n2)*sin(θi) )
 end
 
 #Wave impedence equation
@@ -29,11 +29,36 @@ end
 
 #The sinesoidal equation that when plotted over time gives the interferance
 #pattern graph
-function pattern(t_rate, R1, R2, R3, R4)
-    θ1 =
-    θ2 =
+function pattern(t_rate, c, λ, θi, n)
+    R  = []
+    ϕ  = snell_θt(n[1], n[2], θi)
 
-    ( R1 + R2*cos(θ1) ) - ( R3 + R4*cos(θ2) )
+    #find all reflection going forward until hit window
+    for i = 1:3
+        θt = snell_θt(n[i],n[i+1],θi)
+        append!( (sR(n[i],n[i+1],θi,θt) + pR(n[i],n[i+1],θi,θt)), R)
+        θi = θt
+        θt = snell_θt(n[i+1],n[i+2],θi)
+    end
+
+    #find all reflection going forward until back to vacuum
+    for j = 1:3
+        i = 3 - (j-1)
+        θt = snell_θt(n[i],n[i+1],θi)
+        append!( (sR(n[i],n[i+1],θi,θt) + pR(n[i],n[i+1],θi,θt)), R)
+        θi = θt
+        θt = snell_θt(n[i+1],n[i+2],θi)
+    end
+
+    #Adjust R3 and R4 to account for transmission/reflection conservation
+    R[3] = (1-R[3])*R[3]  +  (1-R[4])*R[3]
+    R[4] = (1-R[2])*R[4]  +  (1-R[3])*R[4]  +  (1-R[4])*R[4]
+
+    #Convert growth rate to angle change rate
+    θ1 = (4*π)/(λ*cos(ϕ)) * t_rate
+    θ1 = (4*π)/(λ*cos(ϕ)) * t_rate * c
+
+    ( R[1] + R[2]*cos(θ1) ) - ( R[3] + R[4]*cos(θ2) )
 end
 
 #Particles/Molecules per second times particle/molecule size = thickness rate
