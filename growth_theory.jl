@@ -30,14 +30,14 @@ end
 
 #The sinesoidal equation that when plotted over time gives the interferance
 #pattern graph
-function pattern(t_rate, k, λ, θi, n)
+function pattern(t_rate, k, λ, θi, n, d)
     R = []
     ϕ = snell_θt(n[1], n[2], θi)
 
     #find all reflection going forward until hit window
     for i = 1:2
         θt = snell_θt(n[i], n[i+1], θi)
-        append!(R, (sR(n[i], n[i+1], θi, θt) + pR(n[i], n[i+1], θi, θt)))
+        append!(R, 0.5*(sR(n[i], n[i+1], θi, θt) + pR(n[i], n[i+1], θi, θt)))
         θi = θt
         if i + 2 < 3
             θt = snell_θt(n[i+1], n[i+2], θi)
@@ -48,7 +48,7 @@ function pattern(t_rate, k, λ, θi, n)
     for j = 1:2
         i = 3 - (j - 1)
         θt = snell_θt(n[i], n[i-1], θi)
-        append!(R, (sR(n[i], n[i-1], θi, θt) + pR(n[i], n[i-1], θi, θt)))
+        append!(R, 0.5*(sR(n[i], n[i-1], θi, θt) + pR(n[i], n[i-1], θi, θt)))
         θi = θt
         if i - 2 >= 1
             θt = snell_θt(n[i-1], n[i-2], θi)
@@ -62,36 +62,39 @@ function pattern(t_rate, k, λ, θi, n)
     d = (1-R[1])*(1-R[2])*(1-R[3])*R[4]*(1-R[2])*(1-R[3])*(1-R[4])
 
     #Convert growth rate to angle change rate.
-    θ1 = (4 * π) / (λ * cos(ϕ)) .* t_rate
+    θ1 =  (4 * π) / (λ * cos(ϕ)) .* t_rate
     θ2 = ((4 * π) / (λ * cos(ϕ)) .* t_rate) .* k
+    γ  = cos((4 * π) / (λ * cos(ϕ)) * d )
 
-    ((a + b) .* cos.(θ1)) .+ ((c + d) .* cos.(θ2))
+    ( a .+ (b .* cos.(θ1)) ) .+ ( c .+ (d .* cos.(θ2)) ) .* γ
 end
 
 T    = 10
 M    = .01801528
 α    = 1
 ρ    = 6.6661e-5
-k1   = 0.25
-k2   = 4
-λ    = 405e-9
+k1   = 0.2
+k2   = 0.2
+d    = 2e-3
+λ1   = 405e-9
+λ2   = 532e-9
 θi   = 0.785398
 n    = [1, 1.309, 1.527]
 h2oV = 2.99e-29
 time = 1:5500
+I    = 2500
 
 #Particles/Molecules per second times particle/molecule size = thickness rate
 Φ = sticking(α, ρ, M, T) * h2oV
 
 ice = Φ .* time
 
-y1 = pattern(ice, k1, λ, θi, n, "front")
-y2 = pattern(ice, k2, λ, θi, n, "back")
+y1 = pattern(ice, k1, λ1, θi, n, d) .* I
+y2 = pattern(ice, k2, λ2, θi, n, d) .* I
 
 plot(layout=(2,1))
 plot!(ice, y1, label="Front Laser", subplot=1)
-plot!(ice, y2, label="Back Laser",  subplot=2)
+plot!(ice, y2, label="Back Laser", color=:green,  subplot=2)
 title!("Theorectical Laser Interferance Pattern", subplot=1)
 ylabel!("Laser Intensity (arbitrary units)", subplot=1)
-xlabel!("Ice Thinkness (nm)", subplot=2)
-ylims!(-0.2, 0.3)
+xlabel!("Ice Thinkness (m)", subplot=2)
