@@ -75,7 +75,7 @@ function pattern(t_rate, k, λ, θi, n, l, I)
     R1      = R(r1, r2, β_front)
     R2      = R(r3, r4, β_back)
 
-    [(R(R1,(T1 .* R2),γ) .*I), (db .+ df), R1]
+    [(R(R1,(T1 .* R2),γ) .*I), (db .+ df), (R1 .* I)]
 end
 
 Temp = 10
