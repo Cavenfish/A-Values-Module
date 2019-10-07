@@ -1,4 +1,5 @@
 using Plots
+using LinearAlgebra
 
 #Hertz–Knudsen equation
 function sticking(α, ρ, M, T)
@@ -12,78 +13,76 @@ function snell_θt(n1, n2, θi)
     asin((n1 / n2) * sin(θi))
 end
 
-#Wave impedence equation
-function Z(n)
-    Z0 = 376.730313 #Wave Impedence of Free Space
-    (Z0 / n)
-end
-
-#Fresnel equation for S-polarized light reflectance
+#Fresnel equation for S-polarized light reflectance coeffiecient
 function sR(n1, n2, θi, θt)
-    abs((n1 * cos(θi) - n2 * cos(θt)) / (n1 * cos(θi) + n2 * cos(θt)))^2
+    abs((n1 * cos(θi) - n2 * cos(θt)) / (n1 * cos(θi) + n2 * cos(θt)))
 end
 
-#Fresnel equation for P-polarized light reflectance
+#Fresnel equation for P-polarized light reflectance coefficient
 function pR(n1, n2, θi, θt)
-    abs((n1 * cos(θt) - n2 * cos(θi)) / (n1 * cos(θt) + n2 * cos(θi)))^2
+    abs((n1 * cos(θt) - n2 * cos(θi)) / (n1 * cos(θt) + n2 * cos(θi)))
 end
 
-#
+#Fresnel equation for S-polarized light reflectance coeffiecient
+function sT(n1, n2, θi, θt)
+    abs((2*n1*cos(θi)) / (n1 * cos(θi) + n2 * cos(θt)))
+end
 
-#The sinesoidal equation that when plotted over time gives the interferance
-#pattern graph
+#Fresnel equation for P-polarized light reflectance coefficient
+function pT(n1, n2, θi, θt)
+    abs((2*n1*cos(θi)) / (n1 * cos(θt) + n2 * cos(θi)))
+end
+
+#(Heavens et al): interferance pattern reflection formula
+function R(r1, r2, β)
+    (r1 .+ r2 .* ℯ.^(-2im .* β)) ./ (1 .+ r1 .* r2 .* ℯ.^(-2im .* β))
+end
+
+#(Heavens et al): interferance pattern transmission formula
+function T(t1, t2, r1, r2, β)
+    (t1 .* t2 .*ℯ.^(-1im .* β)) ./ (1 .+ r1 .* r2 .* ℯ.^(-2im .* β))
+end
+
+#Phase Difference Relation
+function δ(n, d, ϕ, λ)
+    (2 .* π .* n .* d .* cos(ϕ)) ./ (λ)
+end
+
+#Generate the y-values for the pattern graph
 function pattern(t_rate, k, λ, θi, n, l, I)
-    R = []
-    ϕ1 = snell_θt(n[1], n[2], θi)
-    ϕ2 = snell_θt(n[2], n[3], ϕ1)
+    df = t_rate
+    db = t_rate .* k
 
+    θ1 = snell_θt(n[1],n[2],θi)
+    θ2 = snell_θt(n[2],n[3],θ1)
+    θ3 = snell_θt(n[3],n[2],θ2)
+    θ4 = snell_θt(n[2],n[1],θ3)
 
-    #find all reflection going forward until hit window
-    for i = 1:2
-        θt = snell_θt(n[i], n[i+1], θi)
-        append!(R, 0.5*(sR(n[i], n[i+1], θi, θt) + pR(n[i], n[i+1], θi, θt)))
-        θi = θt
-        if i + 2 < 3
-            θt = snell_θt(n[i+1], n[i+2], θi)
-        end
-    end
+    r1 = (0.5)*(sR(n[1], n[2], θi, θ1) +  pR(n[1], n[2], θi, θ1))
+    r2 = (0.5)*(sR(n[2], n[3], θ1, θ2) +  pR(n[2], n[3], θ1, θ2))
+    r3 = (0.5)*(sR(n[3], n[2], θ2, θ3) +  pR(n[3], n[2], θ2, θ3))
+    r4 = (0.5)*(sR(n[2], n[1], θ3, θ4) +  pR(n[2], n[1], θ3, θ4))
 
-    #find all reflection going forward until back to vacuum
-    for j = 1:2
-        i = 3 - (j - 1)
-        θt = snell_θt(n[i], n[i-1], θi)
-        append!(R, 0.5*(sR(n[i], n[i-1], θi, θt) + pR(n[i], n[i-1], θi, θt)))
-        θi = θt
-        if i - 2 >= 1
-            θt = snell_θt(n[i-1], n[i-2], θi)
-        end
-    end
+    t1 = (0.5)*(sT(n[1], n[2], θi, θ1) +  pT(n[1], n[2], θi, θ1))
+    t2 = (0.5)*(sT(n[2], n[3], θ1, θ2) +  pT(n[2], n[3], θ1, θ2))
+    t3 = (0.5)*(sT(n[3], n[2], θ2, θ3) +  pT(n[3], n[2], θ2, θ3))
+    t4 = (0.5)*(sT(n[2], n[1], θ3, θ4) +  pT(n[2], n[1], θ3, θ4))
 
+    β_front = δ(n[2], df, θ1, λ)
+    γ       = δ(n[3], l, θ2, λ)
+    β_back  = δ(n[2], db, θ3, λ)
+    T1      = T(t1, t2, r1, r2, β_front)
+    R1      = R(r1, r2, β_front)
+    R2      = R(r3, r4, β_back)
 
-    #Adjust coefficient transmission/reflection conservation
-    a = R[1] * I
-    b = (1-R[1])*R[2]*(1-R[4]) * I
-    c = (1-R[1])*(1-R[2])*R[3]*(1-R[3])*(1-R[4]) * I
-    d = (1-R[1])*(1-R[2])*(1-R[3])*R[4]*(1-R[2])*(1-R[3])*(1-R[4]) * I
-
-
-    #Convert growth rate to angle change rate.
-    θ1 =  (n[2] * 4 * π) / ( λ * cos(ϕ1)) .* t_rate
-    θ2 = ((n[2] * 4 * π) / ( λ * cos(ϕ1)) .* t_rate) .* k
-    γ  = cos((n[3] * 4 * π) / (λ * cos(ϕ2)) * l )
-
-    println(a)
-    println(c)
-    println(γ)
-
-    ( a .+ (b .* sin.(θ1)) ) .+ ( c .+ (d .* sin.(θ2)) ) .* γ
+    [(R(R1,(T1 .* R2),γ) .*I), (db .+ df), R1]
 end
 
-T    = 10
+Temp = 10
 M    = .01801528
 α    = 1
 ρ    = 6.6661e-5
-k1   = (1/6)
+k1   = (1/2.5)
 k2   = (1/k1)
 d    = 2e-3
 λ1   = 405e-9
@@ -95,20 +94,21 @@ time = 1:5500
 I    = 20000
 
 #Particles/Molecules per second times particle/molecule size = thickness rate
-Φ = sticking(α, ρ, M, T) * h2oV
+Φ = sticking(α, ρ, M, Temp) * h2oV
 
 
 ice  = Φ .* time
 ice1 = Φ .* time
 ice2 = 0:0.1e-9:500e-9
 
-y1 = pattern(ice, k1, λ1, θi, n, d, I)
-y2 = pattern(ice1, k2, λ2, θi, n, d, I)
+p1 = pattern(ice, k1, λ1, θi, n, d, I)
+p2 = pattern(ice1, k2, λ2, θi, n, d, I)
 
 
-plot(layout=(2,1))
-plot!(ice2, y1, label="Front Laser", subplot=1)
-plot!(ice2, y2, label="Back Laser", color=:green,  subplot=2)
+plot(layout=(3,1))
+plot!(p1[2], real(p1[1]), label="Front Laser", subplot=1)
+plot!(p2[2], real(p2[1]), label="Back Laser", color=:green,  subplot=2)
+plot!(p1[2], real(p1[3]), label="R1 Only", color=:red, subplot=3)
 title!("Theorectical Laser Interferance Pattern", subplot=1)
-ylabel!("Laser Intensity (arbitrary units)", subplot=1)
-xlabel!("Ice Thinkness (m)", subplot=2)
+ylabel!("Laser Intensity (arbitrary units)", subplot=2)
+xlabel!("Ice Thinkness (m)", subplot=3)
