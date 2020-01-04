@@ -37,10 +37,12 @@ df4 = get_xy(ch3oh_green[23:length(ch3oh_green)])
 
 
 plot(layout=(2,2))
-@df df1 plot!(:x, :t, label="CH4 Front Laser", legend=:bottomright, subplot=1)
-@df df2 plot!(:x, :t, label="CH4 Back Laser", color=:green, legend=:bottomright, subplot=2)
-@df df3 plot!(:x, :t, label="CH3OH Front Laser",legend=:bottomright, subplot=3)
-@df df4 plot!(:x, :t, label="CH3OH Back Laser", color=:green, legend=:bottomright, subplot=4)
+@df df1 plot!(:x, :t, label="CH4 Front Laser", legend=false, subplot=1)
+@df df2 plot!(:x, :t, label="CH4 Back Laser", color=:green, legend=false, subplot=2)
+@df df3 plot!(:x, :t, label="CH3OH Front Laser",legend=false, subplot=3)
+@df df4 plot!(:x, :t, label="CH3OH Back Laser", color=:green, legend=false, subplot=4)
 title!("Experimental Laser Interferance Pattern", subplot=1)
 ylabel!("Laser Intensity (arbitrary units)", subplot=3)
 xlabel!("Time (s)", subplot=3)
+
+savefig("./expt-plots.png")
